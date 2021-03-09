@@ -1,2 +1,8 @@
 # strscan
-copycat of Ruby StringScanner by Go
+
+'strscan' is aiming for usability of Ruby StringScanner in Go.
+
+
+## License
+
+See file 'LICENSE'.
