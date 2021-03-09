@@ -1,3 +1,4 @@
+// Package strscan is aiming for usability of Ruby StringScanner in Go.
 package strscan
 
 import (
@@ -6,6 +7,13 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
+// StringScanner is a object to scan string.
+//
+// In little more detail, it contains a subject string and
+// 'scan pointer', an index number to point to where in a subject string.
+// User trys to match a head of pointed substring. If it matched,
+// 'scan pointer' were progressed to next of matched part.
+//
 type StringScanner struct {
 	subject     *utf8string.String
 	rest        string
@@ -15,6 +23,7 @@ type StringScanner struct {
 	lastMatched bool
 }
 
+// New is a constructor for StringScanner.
 func New(subject string) *StringScanner {
 	return &StringScanner{
 		subject: utf8string.NewString(subject),
@@ -23,21 +32,34 @@ func New(subject string) *StringScanner {
 	}
 }
 
+// IsEOF is returns true if all of subject string were scanned.
 func (s *StringScanner) IsEOF() bool { return s.pos >= s.subject.RuneCount() }
 
+// Pos is returns 'scan pointer' value.
 func (s *StringScanner) Pos() int { return s.pos }
 
+// SetPos is move 'scan pointer'.
 func (s *StringScanner) SetPos(n int) { s.pos = n }
 
+// Matched is returns string which is a latest macthed part.
 func (s *StringScanner) Matched() string { return s.matched }
 
+// IsMatched is returns true if a latest matching was succeeded.
 func (s *StringScanner) IsMatched() bool { return s.lastMatched }
 
-func (s *StringScanner) Scan(re *regexp.Regexp) bool {
-	if s.pos != s.lastPos {
-		s.lastPos = s.pos
-		s.rest = s.subject.Slice(s.pos, s.subject.RuneCount())
+func (s *StringScanner) updateRest() {
+	if s.pos == s.lastPos {
+		return
 	}
+	s.lastPos = s.pos
+	s.rest = s.subject.Slice(s.pos, s.subject.RuneCount())
+}
+
+// Scan trys to match re to a head of pointed substring and
+// when it's succeeded, progresses 'scan pointer' to next of
+// matched part.
+func (s *StringScanner) Scan(re *regexp.Regexp) bool {
+	s.updateRest()
 	loc := re.FindStringIndex(s.rest)
 	if loc == nil || loc[0] != 0 {
 		s.lastMatched = false
