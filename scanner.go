@@ -7,6 +7,11 @@ import (
 	"golang.org/x/exp/utf8string"
 )
 
+type location struct {
+	lineno int
+	column int
+}
+
 // StringScanner is a object to scan string.
 //
 // In little more detail, it contains a subject string and
@@ -21,6 +26,7 @@ type StringScanner struct {
 	lastPos     int
 	matched     string
 	lastMatched bool
+	locMemo     map[int]*location
 }
 
 // New is a constructor for StringScanner.
@@ -29,6 +35,7 @@ func New(subject string) *StringScanner {
 		subject: utf8string.NewString(subject),
 		pos:     0,
 		lastPos: -1,
+		locMemo: map[int]*location{},
 	}
 }
 
@@ -69,4 +76,27 @@ func (s *StringScanner) Scan(re *regexp.Regexp) bool {
 	s.lastMatched = true
 	s.pos += loc[1]
 	return true
+}
+
+// LinenoAndColumn calculates line number and column index of
+// location pos pointed.
+func (s *StringScanner) LinenoAndColumn(pos int) (int, int) {
+	if loc, ok := s.locMemo[pos]; ok {
+		return loc.lineno, loc.column
+	}
+	part := utf8string.NewString(s.subject.Slice(0, pos))
+	lineno := 0
+	column := 0
+	for i := 0; i < part.RuneCount(); i++ {
+		if part.At(i) == '\n' {
+			lineno++
+			column = 0
+		}
+		column++
+	}
+	s.locMemo[pos] = &location{
+		lineno: lineno,
+		column: column,
+	}
+	return lineno, column
 }
