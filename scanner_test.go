@@ -24,20 +24,26 @@ end
 	s := strscan.New(src)
 
 	for !s.IsEOF() {
+		var msg string
 		p := s.Pos()
+
 		switch {
 		case s.Scan(spaces):
-			// do nothing
+			continue
 		case s.Scan(ident):
-			fmt.Printf("%d: IDENT: %s\n", p, s.Matched())
+			msg = fmt.Sprintf("IDENT: %s", s.Matched())
 		case s.Scan(num):
-			fmt.Printf("%d: NUMBER: %s\n", p, s.Matched())
+			msg = fmt.Sprintf("NUMBER: %s", s.Matched())
 		case s.Scan(str):
-			fmt.Printf("%d: STRING: %s\n", p, s.Matched())
+			msg = fmt.Sprintf("STRING: %s", s.Matched())
 		case s.Scan(ch):
-			fmt.Printf("%d: %s: %s\n", p, s.Matched(), s.Matched())
+			msg = fmt.Sprintf("%s: %s", s.Matched(), s.Matched())
 		default:
 			panic("must not happen")
 		}
+
+		fl, fc := s.LinenoAndColumn(p)
+		ll, lc := s.LinenoAndColumn(s.Pos() - 1)
+		fmt.Printf("%d,%d,%d,%d: %s\n", fl, fc, ll, lc, msg)
 	}
 }

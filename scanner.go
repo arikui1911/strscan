@@ -2,6 +2,7 @@
 package strscan
 
 import (
+	"fmt"
 	"regexp"
 
 	"golang.org/x/exp/utf8string"
@@ -14,13 +15,13 @@ type location struct {
 
 // StringScanner is a object to scan string.
 //
-// In little more detail, it contains a subject string and
-// 'scan pointer', an index number to point to where in a subject string.
+// In little more detail, it contains a target string and
+// 'scan pointer', an index number to point to where in a target string.
 // User trys to match a head of pointed substring. If it matched,
 // 'scan pointer' were progressed to next of matched part.
 //
 type StringScanner struct {
-	subject     *utf8string.String
+	target      *utf8string.String
 	rest        string
 	pos         int
 	lastPos     int
@@ -30,23 +31,38 @@ type StringScanner struct {
 }
 
 // New is a constructor for StringScanner.
-func New(subject string) *StringScanner {
+func New(target string) *StringScanner {
 	return &StringScanner{
-		subject: utf8string.NewString(subject),
+		target:  utf8string.NewString(target),
 		pos:     0,
 		lastPos: -1,
 		locMemo: map[int]*location{},
 	}
 }
 
-// IsEOF is returns true if all of subject string were scanned.
-func (s *StringScanner) IsEOF() bool { return s.pos >= s.subject.RuneCount() }
+// IsEOF is returns true if all of target string were scanned.
+func (s *StringScanner) IsEOF() bool { return s.pos >= s.target.RuneCount() }
 
 // Pos is returns 'scan pointer' value.
 func (s *StringScanner) Pos() int { return s.pos }
 
 // SetPos is move 'scan pointer'.
-func (s *StringScanner) SetPos(n int) { s.pos = n }
+//
+// When n is negative, it means an offset from end of target string.
+//
+// It returns error against to invalid index for target string.
+//
+func (s *StringScanner) SetPos(n int) error {
+	p := n
+	if p < 0 {
+		p = s.target.RuneCount() + n
+	}
+	if p < 0 || p >= s.target.RuneCount() {
+		return fmt.Errorf("index out of range: %d", n)
+	}
+	s.pos = p
+	return nil
+}
 
 // Matched is returns string which is a latest macthed part.
 func (s *StringScanner) Matched() string { return s.matched }
@@ -59,7 +75,12 @@ func (s *StringScanner) updateRest() {
 		return
 	}
 	s.lastPos = s.pos
-	s.rest = s.subject.Slice(s.pos, s.subject.RuneCount())
+	s.rest = s.target.Slice(s.pos, s.target.RuneCount())
+}
+
+func (s *StringScanner) resetLastMatched() {
+	s.matched = ""
+	s.lastMatched = false
 }
 
 // Scan trys to match re to a head of pointed substring and
@@ -67,9 +88,9 @@ func (s *StringScanner) updateRest() {
 // matched part.
 func (s *StringScanner) Scan(re *regexp.Regexp) bool {
 	s.updateRest()
+	s.resetLastMatched()
 	loc := re.FindStringIndex(s.rest)
 	if loc == nil || loc[0] != 0 {
-		s.lastMatched = false
 		return false
 	}
 	s.matched = s.rest[0:loc[1]]
@@ -84,7 +105,7 @@ func (s *StringScanner) LinenoAndColumn(pos int) (int, int) {
 	if loc, ok := s.locMemo[pos]; ok {
 		return loc.lineno, loc.column
 	}
-	part := utf8string.NewString(s.subject.Slice(0, pos))
+	part := utf8string.NewString(s.target.Slice(0, pos))
 	lineno := 0
 	column := 0
 	for i := 0; i < part.RuneCount(); i++ {
