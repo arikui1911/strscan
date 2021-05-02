@@ -112,6 +112,7 @@ func (s *StringScanner) LinenoAndColumn(pos int) (int, int) {
 		if part.At(i) == '\n' {
 			lineno++
 			column = 0
+			continue
 		}
 		column++
 	}
